@@ -195,6 +195,8 @@ public class Claim {
      */
     public String getThumbnailUrl(int width, int height, int q) {
         if (value != null && value.getThumbnail() != null) {
+            if (value.getThumbnail().getUrl() == null)
+                return null;
             ImageCDNUrl imageCDNUrl = new ImageCDNUrl(Math.max(width, 0), Math.max(height, 0), q, null, value.getThumbnail().getUrl());
             return imageCDNUrl.toString();
         }
