@@ -491,8 +491,9 @@ public class MainActivity extends AppCompatActivity implements SdkStatusListener
                 .build();
         establishBillingClientConnection();
 
-        playerNotificationManager = new PlayerNotificationManager(
-                this, LbrynetService.NOTIFICATION_CHANNEL_ID, PLAYBACK_NOTIFICATION_ID, new PlayerNotificationDescriptionAdapter());
+        playerNotificationManager = new PlayerNotificationManager.Builder(
+                this, PLAYBACK_NOTIFICATION_ID, LbrynetService.NOTIFICATION_CHANNEL_ID, new PlayerNotificationDescriptionAdapter()
+        ).build();
 
         // TODO: Check Google Play Services availability
         // castContext = CastContext.getSharedInstance(this);
@@ -1157,7 +1158,7 @@ public class MainActivity extends AppCompatActivity implements SdkStatusListener
 
     public static void stopExoplayer() {
         if (appPlayer != null) {
-            appPlayer.stop(true);
+            appPlayer.stop();
             appPlayer.release();
             appPlayer = null;
         }

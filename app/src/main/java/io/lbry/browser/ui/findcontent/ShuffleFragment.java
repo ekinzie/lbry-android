@@ -30,10 +30,12 @@ import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
 import com.google.android.exoplayer2.ui.PlayerView;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
-import com.google.android.exoplayer2.upstream.cache.CacheDataSourceFactory;
+import com.google.android.exoplayer2.upstream.cache.CacheDataSource;
 import com.google.android.exoplayer2.upstream.cache.LeastRecentlyUsedCacheEvictor;
 import com.google.android.exoplayer2.upstream.cache.SimpleCache;
 import com.google.android.exoplayer2.util.Util;
+import com.google.android.exoplayer2.MediaItem;
+
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -88,7 +90,7 @@ public class ShuffleFragment extends BaseFragment {
     private boolean isPlaying;
     private boolean newPlayerCreated;
     private String currentUrl;
-    private Player.EventListener playerListener;
+    private Player.Listener playerListener;
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
@@ -97,9 +99,9 @@ public class ShuffleFragment extends BaseFragment {
         surfModeLoading = root.findViewById(R.id.shuffle_loading);
         textTitle = root.findViewById(R.id.shuffle_content_title);
         textPublisher = root.findViewById(R.id.shuffle_content_publisher);
-        playerListener = new Player.EventListener() {
+        playerListener = new Player.Listener() {
             @Override
-            public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
+            public void onPlaybackStateChanged(int playbackState) {
                 if (playbackState == Player.STATE_READY) {
                     elapsedDuration = MainActivity.appPlayer.getCurrentPosition();
                     totalDuration = MainActivity.appPlayer.getDuration() < 0 ? 0 : MainActivity.appPlayer.getDuration();
@@ -498,9 +500,17 @@ public class ShuffleFragment extends BaseFragment {
                 String userAgent = Util.getUserAgent(context, getString(R.string.app_name));
                 String mediaSourceUrl = getStreamingUrl();
                 MediaSource mediaSource = new ProgressiveMediaSource.Factory(
-                        new CacheDataSourceFactory(MainActivity.playerCache, new DefaultDataSourceFactory(context, userAgent)),
+                        new CacheDataSource.Factory()
+                            .setCache(MainActivity.playerCache)
+                            .setUpstreamDataSourceFactory(
+                              new DefaultDataSourceFactory(context, userAgent)
+                            ),
                         new DefaultExtractorsFactory()
-                ).setLoadErrorHandlingPolicy(new FileViewFragment.StreamLoadErrorPolicy()).createMediaSource(Uri.parse(mediaSourceUrl));
+                ).setLoadErrorHandlingPolicy(
+                  new FileViewFragment.StreamLoadErrorPolicy()
+                ).createMediaSource(
+                  MediaItem.fromUri(Uri.parse(mediaSourceUrl))
+                );
 
                 MainActivity.appPlayer.prepare(mediaSource, true, true);
             }

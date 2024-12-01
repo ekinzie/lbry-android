@@ -52,8 +52,8 @@ import androidx.webkit.WebViewFeature;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
 import com.github.chrisbanes.photoview.PhotoView;
+import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.C;
-import com.google.android.exoplayer2.DefaultControlDispatcher;
 import com.google.android.exoplayer2.ParserException;
 import com.google.android.exoplayer2.PlaybackParameters;
 import com.google.android.exoplayer2.Player;
@@ -68,7 +68,7 @@ import com.google.android.exoplayer2.ui.PlayerView;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.upstream.DefaultLoadErrorHandlingPolicy;
 import com.google.android.exoplayer2.upstream.Loader;
-import com.google.android.exoplayer2.upstream.cache.CacheDataSourceFactory;
+import com.google.android.exoplayer2.upstream.cache.CacheDataSource;
 import com.google.android.exoplayer2.upstream.cache.LeastRecentlyUsedCacheEvictor;
 import com.google.android.exoplayer2.upstream.cache.SimpleCache;
 import com.google.android.exoplayer2.util.Util;
@@ -200,7 +200,7 @@ public class FileViewFragment extends BaseFragment implements
     private ClaimListAdapter relatedContentAdapter;
     private CommentListAdapter commentListAdapter;
     private BroadcastReceiver sdkReceiver;
-    private Player.EventListener fileViewPlayerListener;
+    private Player.Listener fileViewPlayerListener;
 
     private long elapsedDuration = 0;
     private long totalDuration = 0;
@@ -296,7 +296,7 @@ public class FileViewFragment extends BaseFragment implements
 
         initUi(root);
 
-        fileViewPlayerListener = new Player.EventListener() {
+        fileViewPlayerListener = new Player.Listener() {
             @Override
             public void onPlaybackStateChanged(@Player.State int playbackState) {
                 if (playbackState == Player.STATE_READY) {
@@ -1213,14 +1213,6 @@ public class FileViewFragment extends BaseFragment implements
         TextView textPlaybackSpeed = playerView.findViewById(R.id.player_playback_speed_label);
         textPlaybackSpeed.setText(DEFAULT_PLAYBACK_SPEED);
 
-        playerView.setControlDispatcher(new DefaultControlDispatcher() {
-            @Override
-            public boolean dispatchSetPlayWhenReady(Player player, boolean playWhenReady) {
-                isPlaying = playWhenReady;
-                return super.dispatchSetPlayWhenReady(player, playWhenReady);
-            }
-        });
-
         playbackSpeedContainer.setOnCreateContextMenuListener(new View.OnCreateContextMenuListener() {
             @Override
             public void onCreateContextMenu(ContextMenu contextMenu, View view, ContextMenu.ContextMenuInfo contextMenuInfo) {
@@ -1826,9 +1818,17 @@ public class FileViewFragment extends BaseFragment implements
                 String userAgent = Util.getUserAgent(context, getString(R.string.app_name));
                 String mediaSourceUrl = getStreamingUrl();
                 MediaSource mediaSource = new ProgressiveMediaSource.Factory(
-                        new CacheDataSourceFactory(MainActivity.playerCache, new DefaultDataSourceFactory(context, userAgent)),
+                        new CacheDataSource.Factory()
+                            .setCache(MainActivity.playerCache)
+                            .setUpstreamDataSourceFactory(
+                              new DefaultDataSourceFactory(context, userAgent)
+                            ),
                         new DefaultExtractorsFactory()
-                ).setLoadErrorHandlingPolicy(new StreamLoadErrorPolicy()).createMediaSource(Uri.parse(mediaSourceUrl));
+                ).setLoadErrorHandlingPolicy(
+                  new StreamLoadErrorPolicy()
+                ).createMediaSource(
+                  MediaItem.fromUri(Uri.parse(mediaSourceUrl))
+                );
 
                 MainActivity.appPlayer.setMediaSource(mediaSource, true);
                 MainActivity.appPlayer.prepare();
@@ -1864,7 +1864,7 @@ public class FileViewFragment extends BaseFragment implements
                 playbackPositionMs = previousPlayer.getCurrentPosition();
                 playWhenReady = previousPlayer.getPlayWhenReady();
             }
-            previousPlayer.stop(true);
+            previousPlayer.stop();
         }
 
         this.currentPlayer = currentPlayer;
@@ -2637,7 +2637,7 @@ public class FileViewFragment extends BaseFragment implements
         isPlaying = false;
 
         if (MainActivity.appPlayer != null) {
-            MainActivity.appPlayer.stop(true);
+            MainActivity.appPlayer.stop();
             MainActivity.appPlayer.removeListener(fileViewPlayerListener);
             PlaybackParameters params = new PlaybackParameters(1.0f);
             MainActivity.appPlayer.setPlaybackParameters(params);
@@ -3040,15 +3040,6 @@ public class FileViewFragment extends BaseFragment implements
     }
 
     public static class StreamLoadErrorPolicy extends DefaultLoadErrorHandlingPolicy {
-        @Override
-        public long getRetryDelayMsFor(int dataType, long loadDurationMs, IOException exception, int errorCount) {
-            return exception instanceof ParserException
-                    || exception instanceof FileNotFoundException
-                    || exception instanceof Loader.UnexpectedLoaderException
-                    ? C.TIME_UNSET
-                    : Math.min((errorCount - 1) * 1000, 5000);
-        }
-
         @Override
         public int getMinimumLoadableRetryCount(int dataType) {
             return Integer.MAX_VALUE;
