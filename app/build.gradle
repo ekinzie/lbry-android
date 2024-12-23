@@ -4,7 +4,6 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 34
-    buildToolsVersion "29.0.2"
     flavorDimensions "default"
 
     ndkVersion "23.0.7599858"
@@ -59,6 +58,7 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    namespace 'io.lbry.browser'
 }
 
 task printVersionName {
